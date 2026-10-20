@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Model Picker",
+    "description": "Turns the composer model menu into a two-pane picker: search and provider groups on the left, favorites and recents pinned on top, and the context window, output cap, capability tags and reasoning levels the model's own provider reports on the right."
+  }
+}
