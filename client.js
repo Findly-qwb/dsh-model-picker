@@ -293,6 +293,9 @@ window.__ModuleLoader__.load({
      instead of alternating tall and short rows. */
   min-height: 40px;
 }
+/* 4px between adjacent model rows inside one group; the first row of a group
+   and the section titles are left untouched. */
+.mp-row + .mp-row { margin-top: 4px; }
 .mp-row:hover, .mp-row[data-active] { background: var(--dsw-alias-interactive-bg-hover); }
 .mp-row[data-selected] { background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover)); }
 .mp-badge {
