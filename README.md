@@ -2,13 +2,24 @@
 
 A two-pane model picker for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It replaces the model menu that the composer opens from the model pill — a long drilled list you have to click through provider by provider — with one dialog: every model searchable on the left, everything known about the selected one on the right.
 
+![The picker open over the composer: favorites and recents pinned above provider groups on the left, the selected model's capacity, capabilities and reasoning levels on the right](./docs/picker.png)
+
 中文说明见下方 [中文](#中文)。
 
 ---
 
 ## What it changes
 
-The composer's model seat (`conversation.input.model`) normally opens the shipped drilled menu: type to search, or step into a provider and back out again. This plugin takes that seat over at a lower slot priority and renders its own picker instead. The trigger keeps its place in the tool row and still shows the current model name; only what it opens changes.
+The composer's model seat (`conversation.input.model`) normally opens the shipped drilled menu: a search field, then one folder per provider that you step into and back out of, one model at a time. This plugin takes that seat over at a lower slot priority and renders its own picker instead:
+
+| Before | After |
+|---|---|
+| A drilled list; you open a provider, pick, and go back for another | One dialog with every provider visible at once |
+| Only the model name per row | Provider, name, capability tags and favorites together |
+| Nothing about the model itself | Capacity, capabilities, reasoning levels and actions on the right |
+| No favorites or recents | Both pinned above the provider groups |
+
+The trigger keeps its place in the tool row and still shows the current model name; only what it opens changes.
 
 **Left pane**
 
@@ -90,9 +101,22 @@ The browser half is loaded through `window.__ModuleLoader__.load({ id, factory }
 
 把 DeepSeek Harness 输入框旁的模型菜单换成双栏选择器。原本要逐个供应商点进去再退出来的多层列表，变成一次打开就能看全的对话框：左侧是所有模型，右侧是选中模型的全部已知信息。
 
+![选择器界面：左栏收藏与最近使用置顶、下方按供应商分组，右栏显示所选模型的容量、能力与推理强度](./docs/picker.png)
+
 ### 改了什么
 
-输入框的模型位置（`conversation.input.model`）原本打开官方那个多层下拉。本插件以更低的槽位优先级接管该位置，改为渲染自己的选择器。触发器仍在工具行原位、仍显示当前模型名，只是点开后的内容变了。
+输入框的模型位置（`conversation.input.model`）原本打开官方那个多层下拉：一个搜索框，然后是每个供应商一个文件夹，要逐个点进去、再退出来。
+
+本插件以更低的槽位优先级接管该位置，改为渲染自己的选择器：
+
+| 之前 | 之后 |
+|---|---|
+| 多层下钻，进一个供应商、选一个、再退出来 | 一个对话框，所有供应商同时可见 |
+| 每行只有模型名 | 供应商、模型名、能力标签、收藏星标同屏 |
+| 看不到模型本身的任何信息 | 右栏给出容量、能力、推理档位与操作 |
+| 没有收藏和最近使用 | 两者都置顶在供应商分组之前 |
+
+触发器仍在工具行原位、仍显示当前模型名，只是点开后的内容变了。
 
 **左栏**
 

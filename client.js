@@ -234,7 +234,10 @@ window.__ModuleLoader__.load({
 .mp-card {
   display: flex; flex-direction: column; overflow: hidden;
   width: min(920px, 100%); height: min(620px, 100%);
-  background: var(--dsw-alias-bg-layer-2);
+  /* bg-overlay is the theme's overlay-and-popover surface; the nested layer
+     tokens are translucent here, which let the conversation behind the dialog
+     show through the card and hurt legibility. */
+  background: var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, #fff));
   color: var(--dsw-alias-label-primary);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: var(--dsw-radius-panel, 14px);
@@ -285,6 +288,10 @@ window.__ModuleLoader__.load({
   display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
   padding: 6px 6px; border: none; border-radius: var(--dsw-radius-md, 8px);
   background: transparent; color: inherit; text-align: left; cursor: pointer;
+  /* One height for every row. A model whose provider declares no capabilities
+     keeps the same row as one that does, so the list reads as an even grid
+     instead of alternating tall and short rows. */
+  min-height: 40px;
 }
 .mp-row:hover, .mp-row[data-active] { background: var(--dsw-alias-interactive-bg-hover); }
 .mp-row[data-selected] { background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover)); }
@@ -295,9 +302,15 @@ window.__ModuleLoader__.load({
 }
 .mp-row[data-selected] .mp-badge { background: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-label-primary-foreground, #fff); }
 .mp-row[data-selected] .mp-rowName { font-weight: 600; }
-.mp-rowMain { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.mp-rowMain {
+  min-width: 0; flex: 1; display: flex; flex-direction: column;
+  justify-content: center; gap: 1px;
+}
 .mp-rowName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+/* The band keeps its height whether or not it holds tags, so the name sits at the
+   same offset in every row; hiding rather than removing it keeps the geometry. */
 .mp-rowTags { display: flex; align-items: center; gap: 4px; min-height: 14px; }
+.mp-rowTags[data-empty] { visibility: hidden; }
 .mp-tag {
   padding: 0 4px; border-radius: 4px; background: var(--dsw-alias-bg-layer-2);
   color: var(--dsw-alias-label-tertiary); font-size: 10px; line-height: 14px;
@@ -428,6 +441,18 @@ window.__ModuleLoader__.load({
 
     /** The account provider has a localized title; every other group is as-is. */
     const groupName = (group, t) => (group.id === 'deepseek-account' ? t('provider.account') : group.name)
+
+    /**
+     * Capability tags for one list row, in display order.
+     * @param {object} row - a picker row carrying `meta`.
+     * @returns {Array<{kind: string, label: string}>} empty when the provider declared neither.
+     */
+    const tagsOf = (row, t) => {
+      const tags = []
+      if (row.meta?.reasoning !== undefined) tags.push({ kind: 'reasoning', label: t('tag.reasoning') })
+      if (row.meta?.inputModalities?.includes('image') === true) tags.push({ kind: 'vision', label: t('tag.vision') })
+      return tags
+    }
 
     // Badge glyph: the first letter or digit when the provider name is Latin,
     // otherwise its first meaningful character, so a Chinese provider name keeps
@@ -1125,10 +1150,18 @@ window.__ModuleLoader__.load({
                       h('span', { className: 'mp-rowMain' },
                         h('span', { className: 'mp-rowName' },
                           labelOf({ id: row.provider, name: row.providerName }, row.model, 'option', selected)),
-                        h('span', { className: 'mp-rowTags' },
-                          row.meta?.reasoning !== undefined && h('span', { className: 'mp-tag' }, t('tag.reasoning')),
-                          row.meta?.inputModalities?.includes('image') === true
-                            && h('span', { className: 'mp-tag', 'data-kind': 'vision' }, t('tag.vision')),
+                        // The tag band is always present so every row has the same
+                        // height and the name lands at the same offset; when a model
+                        // declares no capabilities the band is hidden, not removed.
+                        h('span', {
+                          className: 'mp-rowTags',
+                          'data-empty': tagsOf(row, t).length === 0 ? '' : undefined,
+                        },
+                          tagsOf(row, t).map(tag => h('span', {
+                            key: tag.kind,
+                            className: 'mp-tag',
+                            'data-kind': tag.kind === 'vision' ? 'vision' : undefined,
+                          }, tag.label)),
                         ),
                       ),
                       // No provider surface reports a price, so a per-row price

@@ -29,11 +29,14 @@
     "./icon": "./icon.svg"
   },
   "files": [
-    "index.js",
+    "LICENSE",
+    "README.md",
     "client.js",
     "cordis.patch.yml",
-    "locale/*.json",
-    "icon.svg"
+    "docs/*.png",
+    "icon.svg",
+    "index.js",
+    "locale/*.json"
   ],
   "dsh": {
     "bundle": {
