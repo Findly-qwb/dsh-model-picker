@@ -234,10 +234,16 @@ window.__ModuleLoader__.load({
 .mp-card {
   display: flex; flex-direction: column; overflow: hidden;
   width: min(920px, 100%); height: min(620px, 100%);
-  /* bg-overlay is the theme's overlay-and-popover surface; the nested layer
-     tokens are translucent here, which let the conversation behind the dialog
-     show through the card and hurt legibility. */
-  background: var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, #fff));
+  /* The card must stay opaque under any theme, including third-party skins.
+     The stock overlay token is already translucent, and skins make it worse:
+     dsh-dream-skin republishes --dsw-alias-bg-overlay as
+     rgba(255,255,255,0.92), so the conversation behind the dialog bled
+     through. Read, in order: the skin's own paper colour (opaque by its
+     contract), the app base (a solid hex in every shipped skin), the overlay
+     token, then a literal white. The first one that resolves has no alpha. */
+  background: var(--dsh-dream-skin-modal-base,
+    var(--dsw-alias-bg-base,
+      var(--dsw-alias-bg-overlay, #fff)));
   color: var(--dsw-alias-label-primary);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: var(--dsw-radius-panel, 14px);
@@ -280,7 +286,11 @@ window.__ModuleLoader__.load({
 }
 .mp-sectionTitle {
   position: sticky; top: 0; z-index: 1; padding: 8px 4px 4px;
-  background: var(--dsw-alias-bg-layer-2);
+  /* Sticky, so scrolled rows pass underneath it: it needs the same opaque
+     stack as the card or the rows ghost through the header. */
+  background: var(--dsh-dream-skin-modal-base,
+    var(--dsw-alias-bg-base,
+      var(--dsw-alias-bg-overlay, #fff)));
   color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 600;
   letter-spacing: 0.04em; text-transform: uppercase;
 }
