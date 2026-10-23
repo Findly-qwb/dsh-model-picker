@@ -51,20 +51,13 @@ Capability tags follow your configuration. A model declared with `input: [text, 
 
 ## Install
 
-Install it into a Harness profile as a bundle:
+Install it into a Harness profile:
 
 ```bash
-# from your Harness project, with this package published or linked locally
-pnpm add dsh-model-picker
+dsh plugin --profile web add github:Findly-qwb/dsh-model-picker
 ```
 
-Then add `dsh-model-picker` to `dsh.profile.bundles` in your profile's `package.json`, or install it through the in-app plugin manager, which writes that entry for you. Reload the page once after installing.
-
-For local development, link the directory instead of publishing:
-
-```bash
-pnpm add link:/absolute/path/to/dsh-model-picker
-```
+The command writes `dsh-model-picker` to `dsh.profile.bundles` in your profile's `package.json`. Reload the page once after installing.
 
 ## Requirements
 
@@ -148,19 +141,13 @@ The browser half is loaded through `window.__ModuleLoader__.load({ id, factory }
 
 ### 安装
 
-作为 bundle 装进 Harness profile：
+安装到 Harness profile：
 
 ```bash
-pnpm add dsh-model-picker
+dsh plugin --profile web add github:Findly-qwb/dsh-model-picker
 ```
 
-然后把 `dsh-model-picker` 加入 profile `package.json` 的 `dsh.profile.bundles`，或直接用应用内的插件管理器安装（它会替你写入该条目）。安装后重载页面一次。
-
-本地开发可直接链接目录：
-
-```bash
-pnpm add link:/绝对路径/dsh-model-picker
-```
+该命令会把 `dsh-model-picker` 写入 profile `package.json` 的 `dsh.profile.bundles`。安装后重载页面一次。
 
 ### 依赖
 
