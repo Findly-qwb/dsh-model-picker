@@ -24,7 +24,7 @@ The trigger keeps its place in the tool row and still shows the current model na
 **Left pane**
 
 - Search across model names, provider names and capability tags.
-- Grouped list: favorites, recently used, then one group per provider.
+- Grouped list: favorites and recently used stay open at the top; each provider is its own collapsible group, closed by default, with a model count on the header.
 - Each row shows a provider initial, the model name, its capability tags, and a star.
 - Keyboard: `↑` / `↓` to move, `Enter` to apply, `Esc` to close.
 
@@ -114,7 +114,7 @@ The browser half is loaded through `window.__ModuleLoader__.load({ id, factory }
 **左栏**
 
 - 跨模型名、供应商名、能力标签搜索。
-- 分组列表：收藏、最近使用，之后是每个供应商一组。
+- 分组列表：收藏与最近使用置顶常驻展开；每个供应商各自成一个可折叠分组，默认收起，标题上显示该组的模型数量。
 - 每行显示供应商首字母、模型名、能力标签和星标。
 - 键盘：`↑` / `↓` 移动，`Enter` 应用，`Esc` 关闭。
 

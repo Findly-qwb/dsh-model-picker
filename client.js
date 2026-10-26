@@ -90,6 +90,9 @@ window.__ModuleLoader__.load({
         'group.recents': '最近使用',
         'group.results': '搜索结果',
         'group.unavailable': '未能加载',
+        'group.expand': '展开 {group}',
+        'group.collapse': '收起 {group}',
+        'group.count': '{count} 个模型',
         'failure.entry': '{provider}：{message}',
         'provider.account': 'DeepSeek 官方账号',
         'status.loading': '正在获取模型清单…',
@@ -154,6 +157,9 @@ window.__ModuleLoader__.load({
         'group.recents': 'Recent',
         'group.results': 'Results',
         'group.unavailable': 'Unavailable',
+        'group.expand': 'Expand {group}',
+        'group.collapse': 'Collapse {group}',
+        'group.count': '{count} models',
         'failure.entry': '{provider}: {message}',
         'provider.account': 'DeepSeek account',
         'status.loading': 'Loading the model catalog…',
@@ -293,6 +299,27 @@ window.__ModuleLoader__.load({
       var(--dsw-alias-bg-overlay, #fff)));
   color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 600;
   letter-spacing: 0.04em; text-transform: uppercase;
+}
+/* A collapsible group header is a real button, so it has to keep the title's
+   look while gaining a full-width hit area and a disclosure triangle. */
+.mp-sectionTitle[data-toggle] {
+  display: flex; align-items: center; gap: 5px; width: 100%; box-sizing: border-box;
+  border: none; border-radius: var(--dsw-radius-sm, 4px);
+  font: inherit; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase; text-align: left;
+  cursor: pointer;
+}
+.mp-sectionTitle[data-toggle]:hover { color: var(--dsw-alias-label-secondary); }
+.mp-sectionTitle[data-toggle]:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+}
+.mp-sectionLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-sectionCount {
+  flex: none; padding: 0 5px; border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-3, var(--dsw-alias-bg-layer-2));
+  color: var(--dsw-alias-label-caption);
+  font-size: 10px; font-weight: 500; letter-spacing: 0;
 }
 .mp-row {
   display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
@@ -519,6 +546,15 @@ window.__ModuleLoader__.load({
       stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true,
     }, h('path', { d: 'M2.5 4.5 6 8l3.5-3.5' }))
 
+    // Section disclosure triangle: points right when the group is collapsed,
+    // rotates down when it is open.
+    const IconDisclosure = ({ open, size = 10, className }) => h('svg', {
+      className, width: size, height: size, viewBox: '0 0 12 12', fill: 'none',
+      stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round',
+      'aria-hidden': true,
+      style: { transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms ease' },
+    }, h('path', { d: 'M4.5 2.5L8 6l-3.5 3.5' }))
+
     const IconStar = ({ filled, size = 14, className }) => h('svg', {
       className, width: size, height: size, viewBox: '0 0 16 16',
       fill: filled ? 'currentColor' : 'none', stroke: 'currentColor', strokeWidth: 1.2,
@@ -650,6 +686,18 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(false)
       const [error, setError] = useState(null)
       const [showTech, setShowTech] = useState(false)
+      // Provider groups start collapsed; favorites and recents stay open so the
+      // models a user actually reaches for are visible without a click. The set
+      // holds the ids of groups the user has opened.
+      const [expandedGroups, setExpandedGroups] = useState(() => new Set())
+      const toggleGroup = useCallback(id => {
+        setExpandedGroups(previous => {
+          const next = new Set(previous)
+          if (next.has(id)) next.delete(id)
+          else next.add(id)
+          return next
+        })
+      }, [])
       const [copied, setCopied] = useState(false)
       const searchRef = useRef(null)
       const listRef = useRef(null)
@@ -737,7 +785,7 @@ window.__ModuleLoader__.load({
             if (leftExact !== rightExact) return leftExact - rightExact
             return left.model.name.localeCompare(right.model.name)
           })
-          return rows.length === 0 ? [] : [{ id: 'results', title: t('group.results'), rows }]
+          return rows.length === 0 ? [] : [{ id: 'results', title: t('group.results'), rows, collapsible: false }]
         }
         // One model can appear in several sections at once (favorited, recent, and
         // in its provider group). The model key identifies the model; the row needs
@@ -747,16 +795,17 @@ window.__ModuleLoader__.load({
         const out = []
         const favoriteRows = favorites.map(rowOf).filter(Boolean)
           .map(row => ({ ...row, instance: `favorites:${row.key}` }))
-        if (favoriteRows.length > 0) out.push({ id: 'favorites', title: t('group.favorites'), rows: favoriteRows })
+        if (favoriteRows.length > 0) out.push({ id: 'favorites', title: t('group.favorites'), rows: favoriteRows, collapsible: false })
         const recentRows = recents.map(rowOf).filter(Boolean)
           .map(row => ({ ...row, instance: `recents:${row.key}` }))
-        if (recentRows.length > 0) out.push({ id: 'recents', title: t('group.recents'), rows: recentRows })
+        if (recentRows.length > 0) out.push({ id: 'recents', title: t('group.recents'), rows: recentRows, collapsible: false })
         for (const group of orderGroups(groups)) {
           const name = groupName(group, t)
           if (group.models.length === 0) continue
           out.push({
             id: `provider:${group.id}`,
             title: name,
+            collapsible: true,
             rows: group.models.map(model => ({
               instance: `provider:${group.id}:${model.id}`,
               key: modelKey(group.id, model.id),
@@ -788,7 +837,24 @@ window.__ModuleLoader__.load({
         return out
       }, [byKey, favorites, groups, meta, query, recents, rowOf, state.failures, t])
 
-      const flatRows = useMemo(() => sections.flatMap(section => section.rows), [sections])
+      // A group is open when it is not collapsible (favorites, recents, search
+      // results) or when the user opened it. Only open groups contribute rows to
+      // keyboard navigation, or Enter would apply a model from a closed group.
+      const isOpen = useCallback(
+        section => section.collapsible !== true || expandedGroups.has(section.id),
+        [expandedGroups],
+      )
+      const flatRows = useMemo(
+        () => sections.filter(isOpen).flatMap(section => section.rows),
+        [isOpen, sections],
+      )
+      // Rows that exist regardless of collapse state. "Nothing to show" has to be
+      // decided on this, or a list whose provider groups the user closed would
+      // claim the catalog is empty.
+      const totalRows = useMemo(
+        () => sections.reduce((sum, section) => sum + section.rows.length, 0),
+        [sections],
+      )
       // Indexed by row instance, not by model key: a duplicate model in two
       // sections would otherwise collapse to whichever row rendered last.
       const indexOfRow = useMemo(() => {
@@ -909,7 +975,7 @@ window.__ModuleLoader__.load({
       }
 
       const status = state.status
-      const loading = status === 'loading' && flatRows.length === 0
+      const loading = status === 'loading' && totalRows === 0
 
       const head = preview === null ? null : (() => {
         const cost = preview.meta?.cost ?? null
@@ -1124,16 +1190,33 @@ window.__ModuleLoader__.load({
                   t('status.error'),
                   h('button', { type: 'button', className: 'mp-retry', onClick: () => load() }, t('status.retry')),
                 ),
-                !loading && flatRows.length === 0 && h('div', { className: 'mp-note' },
+                !loading && totalRows === 0 && h('div', { className: 'mp-note' },
                   query.length > 0 ? t('search.empty') : t('status.empty')),
-                sections.map(section => h('div', { key: section.id },
-                  h('div', { className: 'mp-sectionTitle' }, section.title),
+                sections.map(section => {
+                  const collapsible = section.collapsible === true
+                  const open = isOpen(section)
+                  return h('div', { key: section.id, 'data-collapsed': collapsible && !open ? '' : undefined },
+                  collapsible
+                    ? h('button', {
+                        type: 'button',
+                        className: 'mp-sectionTitle',
+                        'data-toggle': '',
+                        'data-open': open ? '' : undefined,
+                        'aria-expanded': open,
+                        title: t(open ? 'group.collapse' : 'group.expand', { group: section.title }),
+                        onClick: () => toggleGroup(section.id),
+                      },
+                        h(IconDisclosure, { open }),
+                        h('span', { className: 'mp-sectionLabel' }, section.title),
+                        h('span', { className: 'mp-sectionCount' }, t('group.count', { count: section.rows.length })),
+                      )
+                    : h('div', { className: 'mp-sectionTitle' }, section.title),
                   (section.failures ?? []).map(failure => h('div', {
                     key: `failure:${failure.id}`,
                     className: 'mp-note',
                     'data-kind': 'error',
                   }, failure.message)),
-                  section.rows.map(row => {
+                  open && section.rows.map(row => {
                     const index = indexOfRow.get(row.instance) ?? -1
                     const selected = current !== null && current.provider === row.provider && current.model === row.model.id
                     const isFavorite = favorites.includes(row.key)
@@ -1195,7 +1278,8 @@ window.__ModuleLoader__.load({
                       }, h(IconStar, { filled: isFavorite })),
                     )
                   }),
-                )),
+                  )
+                }),
               ),
             ),
             h('div', { className: 'mp-right' },
