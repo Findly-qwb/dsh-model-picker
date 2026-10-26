@@ -290,6 +290,10 @@ window.__ModuleLoader__.load({
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
+/* Groups are separated by space, not by a rule. Each header now carries its own
+   mark, which is the boundary readers actually use; adding a hairline as well
+   would be two weak signals where one clear one already works. */
+.mp-group + .mp-group { margin-top: 14px; }
 .mp-sectionTitle {
   position: sticky; top: 0; z-index: 1; padding: 8px 4px 4px;
   /* Sticky, so scrolled rows pass underneath it: it needs the same opaque
@@ -315,6 +319,14 @@ window.__ModuleLoader__.load({
   outline-offset: -2px;
 }
 .mp-sectionLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Provider mark: a tinted tile whose hue comes from the provider id. It is a
+   generated anchor, not a vendor logo — Harness exposes no provider icon. */
+.mp-mark {
+  flex: none; display: grid; place-items: center; box-sizing: border-box;
+  font-weight: 600; line-height: 1; letter-spacing: 0;
+}
+.mp-sectionGlyph { flex: none; opacity: 0.75; }
+.mp-sectionTitle[data-toggle] .mp-mark { margin-right: 1px; }
 .mp-sectionCount {
   flex: none; padding: 0 5px; border-radius: 999px;
   background: var(--dsw-alias-bg-layer-3, var(--dsw-alias-bg-layer-2));
@@ -335,12 +347,6 @@ window.__ModuleLoader__.load({
 .mp-row + .mp-row { margin-top: 4px; }
 .mp-row:hover, .mp-row[data-active] { background: var(--dsw-alias-interactive-bg-hover); }
 .mp-row[data-selected] { background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover)); }
-.mp-badge {
-  flex: none; display: grid; place-items: center; width: 22px; height: 22px;
-  border-radius: 6px; background: var(--dsw-alias-bg-layer-3, var(--dsw-alias-bg-layer-2));
-  color: var(--dsw-alias-label-secondary); font-size: 11px; font-weight: 600;
-}
-.mp-row[data-selected] .mp-badge { background: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-label-primary-foreground, #fff); }
 .mp-row[data-selected] .mp-rowName { font-weight: 600; }
 .mp-rowMain {
   min-width: 0; flex: 1; display: flex; flex-direction: column;
@@ -506,6 +512,84 @@ window.__ModuleLoader__.load({
         if (/\S/u.test(char)) return char
       }
       return '·'
+    }
+
+    /**
+     * Stable hue for a provider id.
+     *
+     * Harness exposes no provider icon: `listModels` and `resolveModelInfo` carry
+     * no logo, avatar or brand field, so inventing a brand mark would be a claim
+     * the data cannot back. What the list actually lacks is a repeatable anchor,
+     * so this derives one from the id itself — the same provider always gets the
+     * same hue and shape, and nothing is presented as the vendor's own logo.
+     *
+     * @param {string} id - provider id.
+     * @returns {number} hue in degrees, 0..359.
+     */
+    const hueOf = id => {
+      let hash = 0
+      for (const char of String(id ?? '')) hash = (hash * 31 + char.codePointAt(0)) % 360000
+      return hash % 360
+    }
+
+    /** Fill/stroke pair for a provider hue, readable in both themes. */
+    const markColors = id => {
+      const hue = hueOf(id)
+      return {
+        fill: `hsl(${hue} 62% 52% / 0.16)`,
+        ink: `hsl(${hue} 58% 42%)`,
+      }
+    }
+
+    /**
+     * Header glyph for groups that are not a provider: favorites get a star,
+     * recents a clock, results a magnifier. Without these, those three headers
+     * were plain text next to provider headers that now carry a mark.
+     */
+    const SectionGlyph = ({ kind, size = 14 }) => {
+      const common = {
+        className: 'mp-sectionGlyph', width: size, height: size, viewBox: '0 0 16 16',
+        fill: 'none', stroke: 'currentColor', strokeWidth: 1.3,
+        strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true,
+        'data-kind': kind,
+      }
+      if (kind === 'favorites') {
+        return h('svg', common, h('path', { d: 'M8 2.2l1.8 3.7 4 .6-2.9 2.85L11.6 13 8 11.2 4.4 13l.7-3.65L2.2 6.5l4-.6z' }))
+      }
+      if (kind === 'recents') {
+        return h('svg', common,
+          h('circle', { cx: 8, cy: 8, r: 5.6 }),
+          h('path', { d: 'M8 4.9V8l2.2 1.5' }))
+      }
+      if (kind === 'results') {
+        return h('svg', common,
+          h('circle', { cx: 7.1, cy: 7.1, r: 4.1 }),
+          h('path', { d: 'M10.2 10.2L13.4 13.4' }))
+      }
+      return h('svg', common, h('path', { d: 'M8 2.5v11M2.5 8h11' }))
+    }
+
+    /**
+     * Provider mark: a rounded tile carrying the initial, tinted by a hue derived
+     * from the provider id. Shape alternates between rounded-square and circle so
+     * neighbouring groups separate even when their hues land close together.
+     *
+     * @param {{id: string, name: string, size?: number, className?: string}} props
+     */
+    const ProviderMark = ({ id, name, size = 18, className }) => {
+      const { fill, ink } = markColors(id)
+      return h('span', {
+        className: ['mp-mark', className].filter(Boolean).join(' '),
+        style: {
+          width: `${size}px`,
+          height: `${size}px`,
+          background: fill,
+          color: ink,
+          fontSize: `${Math.round(size * 0.58)}px`,
+          borderRadius: hueOf(id) % 2 === 0 ? '50%' : '5px',
+        },
+        'aria-hidden': true,
+      }, letterOf(name))
     }
 
     const matches = (haystack, needle) => {
@@ -799,10 +883,10 @@ window.__ModuleLoader__.load({
         const out = []
         const favoriteRows = favorites.map(rowOf).filter(Boolean)
           .map(row => ({ ...row, instance: `favorites:${row.key}` }))
-        if (favoriteRows.length > 0) out.push({ id: 'favorites', title: t('group.favorites'), rows: favoriteRows, collapsible: true, defaultOpen: true })
+        if (favoriteRows.length > 0) out.push({ id: 'favorites', title: t('group.favorites'), rows: favoriteRows, collapsible: true, defaultOpen: true, provider: null })
         const recentRows = recents.map(rowOf).filter(Boolean)
           .map(row => ({ ...row, instance: `recents:${row.key}` }))
-        if (recentRows.length > 0) out.push({ id: 'recents', title: t('group.recents'), rows: recentRows, collapsible: true, defaultOpen: true })
+        if (recentRows.length > 0) out.push({ id: 'recents', title: t('group.recents'), rows: recentRows, collapsible: true, defaultOpen: true, provider: null })
         for (const group of orderGroups(groups)) {
           const name = groupName(group, t)
           if (group.models.length === 0) continue
@@ -811,6 +895,9 @@ window.__ModuleLoader__.load({
             title: name,
             collapsible: true,
             defaultOpen: false,
+            // The header renders the provider's mark, so the section has to know
+            // which provider it is; the title string alone is not an id.
+            provider: group.id,
             rows: group.models.map(model => ({
               instance: `provider:${group.id}:${model.id}`,
               key: modelKey(group.id, model.id),
@@ -1205,7 +1292,11 @@ window.__ModuleLoader__.load({
                 sections.map(section => {
                   const collapsible = section.collapsible === true
                   const open = isOpen(section)
-                  return h('div', { key: section.id, 'data-collapsed': collapsible && !open ? '' : undefined },
+                  return h('div', {
+                    key: section.id,
+                    className: 'mp-group',
+                    'data-collapsed': collapsible && !open ? '' : undefined,
+                  },
                   collapsible
                     ? h('button', {
                         type: 'button',
@@ -1217,6 +1308,9 @@ window.__ModuleLoader__.load({
                         onClick: () => toggleGroup(section.id, section.defaultOpen),
                       },
                         h(IconDisclosure, { open }),
+                        section.provider != null
+                          ? h(ProviderMark, { id: section.provider, name: section.title, size: 16 })
+                          : h(SectionGlyph, { kind: section.id }),
                         h('span', { className: 'mp-sectionLabel' }, section.title),
                         h('span', { className: 'mp-sectionCount' }, t('group.count', { count: section.rows.length })),
                       )
@@ -1252,7 +1346,14 @@ window.__ModuleLoader__.load({
                       },
                       onDoubleClick: () => apply(row, effortFor(row)),
                     },
-                      h('span', { className: 'mp-badge' }, letterOf(row.providerName)),
+                      // Same mark as the group header, so a row reads as a member
+                      // of that group at a glance instead of a repeated letter.
+                      h(ProviderMark, {
+                        id: row.provider,
+                        name: row.providerName,
+                        size: 20,
+                        className: 'mp-mark--row',
+                      }),
                       h('span', { className: 'mp-rowMain' },
                         h('span', { className: 'mp-rowName' },
                           labelOf({ id: row.provider, name: row.providerName }, row.model, 'option', selected)),
