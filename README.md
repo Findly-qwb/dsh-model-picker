@@ -25,7 +25,7 @@ The trigger keeps its place in the tool row and still shows the current model na
 
 - Search across model names, provider names and capability tags.
 - Grouped list: favorites and recently used sit at the top, open by default; every group — those two included — collapses from its header, and provider groups start closed. Each header carries a model count.
-- Each row and group header carries a provider mark: a small tile whose hue is derived from the provider id, so the same provider always looks the same. Harness exposes no provider icon, so this is a generated anchor rather than a vendor logo. Provider names are never invented, and neither are their marks.
+- Each group header carries a provider mark: a small tile whose hue is derived from the provider id, so the same provider always looks the same. Harness exposes no provider icon, so this is a generated anchor rather than a vendor logo. Rows carry text only — the mark is stated once per group instead of once per model — and row text is indented to line up with the heading label.
 - Keyboard: `↑` / `↓` to move, `Enter` to apply, `Esc` to close.
 
 **Right pane**
@@ -115,7 +115,7 @@ The browser half is loaded through `window.__ModuleLoader__.load({ id, factory }
 
 - 跨模型名、供应商名、能力标签搜索。
 - 分组列表：收藏与最近使用置顶，默认展开；每个分组（包括这两个）都能点头部折叠，供应商分组默认收起。头部显示该组的模型数量。
-- 每行与分组标题都带一个供应商徽记：小方块，色相由供应商 id 推导，同一供应商永远同一颜色。Harness 不提供供应商图标，所以这是生成的识别标记，不是厂商 logo——不虚构品牌，也不虚构它的标志。
+- 分组标题带一个供应商徽记：小方块，色相由供应商 id 推导，同一供应商永远同一颜色。Harness 不提供供应商图标，所以这是生成的识别标记，不是厂商 logo——不虚构品牌，也不虚构它的标志。行内不再重复徽记（每个分组只陈述一次），行文字缩进到与分组标题文字对齐。
 - 键盘：`↑` / `↓` 移动，`Enter` 应用，`Esc` 关闭。
 
 **右栏**

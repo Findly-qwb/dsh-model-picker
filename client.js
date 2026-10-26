@@ -307,7 +307,7 @@ window.__ModuleLoader__.load({
 /* A collapsible group header is a real button, so it has to keep the title's
    look while gaining a full-width hit area and a disclosure triangle. */
 .mp-sectionTitle[data-toggle] {
-  display: flex; align-items: center; gap: 5px; width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; gap: 6px; width: 100%; box-sizing: border-box;
   border: none; border-radius: var(--dsw-radius-sm, 4px);
   font: inherit; font-size: 11px; font-weight: 600;
   letter-spacing: 0.04em; text-transform: uppercase; text-align: left;
@@ -325,7 +325,10 @@ window.__ModuleLoader__.load({
   flex: none; display: grid; place-items: center; box-sizing: border-box;
   font-weight: 600; line-height: 1; letter-spacing: 0;
 }
-.mp-sectionGlyph { flex: none; opacity: 0.75; }
+/* Favorites/recents/results are not providers, so they carry a glyph instead of a
+   mark. It occupies the same 22px slot, otherwise those headings would start
+   their label 8px left of the provider headings above them. */
+.mp-sectionGlyph { flex: none; width: 22px; opacity: 0.75; }
 .mp-sectionTitle[data-toggle] .mp-mark { margin-right: 1px; }
 .mp-sectionCount {
   flex: none; padding: 0 5px; border-radius: 999px;
@@ -335,7 +338,12 @@ window.__ModuleLoader__.load({
 }
 .mp-row {
   display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
-  padding: 6px 6px; border: none; border-radius: var(--dsw-radius-md, 8px);
+  /* Indented to the group heading's label, not to the card edge: disclosure (10)
+     + gap (6) + mark (22) + gap (6) puts that label at 48px from the card, and a
+     row whose text starts anywhere else reads as a sibling of its own heading.
+     The mark lives on the heading only — repeating it per row said the same
+     provider name once per line. */
+  padding: 6px 6px 6px 48px; border: none; border-radius: var(--dsw-radius-md, 8px);
   background: transparent; color: inherit; text-align: left; cursor: pointer;
   /* One height for every row. A model whose provider declares no capabilities
      keeps the same row as one that does, so the list reads as an even grid
@@ -585,7 +593,7 @@ window.__ModuleLoader__.load({
           height: `${size}px`,
           background: fill,
           color: ink,
-          fontSize: `${Math.round(size * 0.58)}px`,
+          fontSize: `${Math.round(size * (size >= 22 ? 0.5 : 0.58))}px`,
           borderRadius: hueOf(id) % 2 === 0 ? '50%' : '5px',
         },
         'aria-hidden': true,
@@ -1309,7 +1317,7 @@ window.__ModuleLoader__.load({
                       },
                         h(IconDisclosure, { open }),
                         section.provider != null
-                          ? h(ProviderMark, { id: section.provider, name: section.title, size: 16 })
+                          ? h(ProviderMark, { id: section.provider, name: section.title, size: 22 })
                           : h(SectionGlyph, { kind: section.id }),
                         h('span', { className: 'mp-sectionLabel' }, section.title),
                         h('span', { className: 'mp-sectionCount' }, t('group.count', { count: section.rows.length })),
@@ -1346,14 +1354,6 @@ window.__ModuleLoader__.load({
                       },
                       onDoubleClick: () => apply(row, effortFor(row)),
                     },
-                      // Same mark as the group header, so a row reads as a member
-                      // of that group at a glance instead of a repeated letter.
-                      h(ProviderMark, {
-                        id: row.provider,
-                        name: row.providerName,
-                        size: 20,
-                        className: 'mp-mark--row',
-                      }),
                       h('span', { className: 'mp-rowMain' },
                         h('span', { className: 'mp-rowName' },
                           labelOf({ id: row.provider, name: row.providerName }, row.model, 'option', selected)),
