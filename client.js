@@ -579,13 +579,24 @@ window.__ModuleLoader__.load({
 
     /**
      * Provider mark: a rounded tile carrying the initial, tinted by a hue derived
-     * from the provider id. Shape alternates between rounded-square and circle so
-     * neighbouring groups separate even when their hues land close together.
+     * from the provider id.
+     *
+     * The shape used to alternate between a circle and a rounded square so that
+     * neighbouring hues could not be confused. At 22px that read as inconsistent
+     * size rather than as a distinction: a circle covers ~18% less area than a
+     * rounded square of the same box, so circles looked smaller than squares in
+     * the same column. One shape for every provider; hue alone separates them.
      *
      * @param {{id: string, name: string, size?: number, className?: string}} props
      */
     const ProviderMark = ({ id, name, size = 18, className }) => {
       const { fill, ink } = markColors(id)
+      const glyph = letterOf(name)
+      // A CJK glyph fills its em box while a Latin capital only fills its cap
+      // height, so the same font-size makes "商" look larger than "S". Drop the
+      // CJK case a step so every mark reads at one weight.
+      const wide = /[\u3400-\u9FFF\uF900-\uFAFF]/u.test(glyph)
+      const ratio = wide ? (size >= 22 ? 0.44 : 0.5) : (size >= 22 ? 0.5 : 0.58)
       return h('span', {
         className: ['mp-mark', className].filter(Boolean).join(' '),
         style: {
@@ -593,11 +604,12 @@ window.__ModuleLoader__.load({
           height: `${size}px`,
           background: fill,
           color: ink,
-          fontSize: `${Math.round(size * (size >= 22 ? 0.5 : 0.58))}px`,
-          borderRadius: hueOf(id) % 2 === 0 ? '50%' : '5px',
+          fontSize: `${Math.round(size * ratio)}px`,
+          // Radius scales with the box so every mark is the same shape at any size.
+          borderRadius: `${Math.round(size * 0.27)}px`,
         },
         'aria-hidden': true,
-      }, letterOf(name))
+      }, glyph)
     }
 
     const matches = (haystack, needle) => {
