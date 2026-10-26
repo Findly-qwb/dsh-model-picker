@@ -686,15 +686,19 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(false)
       const [error, setError] = useState(null)
       const [showTech, setShowTech] = useState(false)
-      // Provider groups start collapsed; favorites and recents stay open so the
-      // models a user actually reaches for are visible without a click. The set
-      // holds the ids of groups the user has opened.
-      const [expandedGroups, setExpandedGroups] = useState(() => new Set())
-      const toggleGroup = useCallback(id => {
-        setExpandedGroups(previous => {
-          const next = new Set(previous)
-          if (next.has(id)) next.delete(id)
-          else next.add(id)
+      // Every group is collapsible, so "open" can no longer be derived from the
+      // section kind alone: favorites and recents open by default, provider
+      // groups closed. This map records only the groups the user has toggled, so
+      // unopened groups keep their own default instead of one shared default.
+      const [groupOverrides, setGroupOverrides] = useState(() => new Map())
+      // Flip the state the group is in right now, not a hardcoded `true`: the
+      // first click on a default-open group (favorites) has to CLOSE it, and a
+      // toggle that assumed "no override means closed" left it open forever.
+      const toggleGroup = useCallback((id, defaultOpen) => {
+        setGroupOverrides(previous => {
+          const next = new Map(previous)
+          const current = next.has(id) ? next.get(id) : defaultOpen === true
+          next.set(id, !current)
           return next
         })
       }, [])
@@ -795,10 +799,10 @@ window.__ModuleLoader__.load({
         const out = []
         const favoriteRows = favorites.map(rowOf).filter(Boolean)
           .map(row => ({ ...row, instance: `favorites:${row.key}` }))
-        if (favoriteRows.length > 0) out.push({ id: 'favorites', title: t('group.favorites'), rows: favoriteRows, collapsible: false })
+        if (favoriteRows.length > 0) out.push({ id: 'favorites', title: t('group.favorites'), rows: favoriteRows, collapsible: true, defaultOpen: true })
         const recentRows = recents.map(rowOf).filter(Boolean)
           .map(row => ({ ...row, instance: `recents:${row.key}` }))
-        if (recentRows.length > 0) out.push({ id: 'recents', title: t('group.recents'), rows: recentRows, collapsible: false })
+        if (recentRows.length > 0) out.push({ id: 'recents', title: t('group.recents'), rows: recentRows, collapsible: true, defaultOpen: true })
         for (const group of orderGroups(groups)) {
           const name = groupName(group, t)
           if (group.models.length === 0) continue
@@ -806,6 +810,7 @@ window.__ModuleLoader__.load({
             id: `provider:${group.id}`,
             title: name,
             collapsible: true,
+            defaultOpen: false,
             rows: group.models.map(model => ({
               instance: `provider:${group.id}:${model.id}`,
               key: modelKey(group.id, model.id),
@@ -837,12 +842,17 @@ window.__ModuleLoader__.load({
         return out
       }, [byKey, favorites, groups, meta, query, recents, rowOf, state.failures, t])
 
-      // A group is open when it is not collapsible (favorites, recents, search
-      // results) or when the user opened it. Only open groups contribute rows to
-      // keyboard navigation, or Enter would apply a model from a closed group.
+      // A group is open when it is not collapsible (search results) or when it is
+      // open by its own default, unless the user toggled it. Only open groups
+      // contribute rows to keyboard navigation, or Enter would apply a model from
+      // a closed group.
       const isOpen = useCallback(
-        section => section.collapsible !== true || expandedGroups.has(section.id),
-        [expandedGroups],
+        section => {
+          if (section.collapsible !== true) return true
+          const override = groupOverrides.get(section.id)
+          return override === undefined ? section.defaultOpen === true : override
+        },
+        [groupOverrides],
       )
       const flatRows = useMemo(
         () => sections.filter(isOpen).flatMap(section => section.rows),
@@ -1204,7 +1214,7 @@ window.__ModuleLoader__.load({
                         'data-open': open ? '' : undefined,
                         'aria-expanded': open,
                         title: t(open ? 'group.collapse' : 'group.expand', { group: section.title }),
-                        onClick: () => toggleGroup(section.id),
+                        onClick: () => toggleGroup(section.id, section.defaultOpen),
                       },
                         h(IconDisclosure, { open }),
                         h('span', { className: 'mp-sectionLabel' }, section.title),
