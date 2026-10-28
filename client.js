@@ -237,19 +237,29 @@ window.__ModuleLoader__.load({
   animation: mp-fade 120ms ease-out;
 }
 @keyframes mp-fade { from { opacity: 0 } to { opacity: 1 } }
+/* Solid underlay for the dialog and its sticky headers.
+   Harness marks the active appearance with data-ds-dark-theme on <body>, so the
+   underlay can be a literal per appearance instead of a theme token — which is
+   the whole point: a skin can rewrite every surface token (dsh-client-ui-skins
+   does, in wallpaper mode), but it cannot stop a literal from being opaque. The
+   token still tints the surface, layered on top. */
+.mp-card, .mp-sectionTitle { --mp-surface-solid: #ffffff; }
+body[data-ds-dark-theme] .mp-card,
+body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
 .mp-card {
   display: flex; flex-direction: column; overflow: hidden;
   width: min(920px, 100%); height: min(620px, 100%);
-  /* The card must stay opaque under any theme, including third-party skins.
-     The stock overlay token is already translucent, and skins make it worse:
-     dsh-dream-skin republishes --dsw-alias-bg-overlay as
-     rgba(255,255,255,0.92), so the conversation behind the dialog bled
-     through. Read, in order: the skin's own paper colour (opaque by its
-     contract), the app base (a solid hex in every shipped skin), the overlay
-     token, then a literal white. The first one that resolves has no alpha. */
-  background: var(--dsh-dream-skin-modal-base,
-    var(--dsw-alias-bg-base,
-      var(--dsw-alias-bg-overlay, #fff)));
+  /* Two layers, bottom one opaque. The upper layer is whatever the theme or a
+     skin says the dialog surface is, and it is allowed to be translucent — it
+     only tints the solid layer below. Picking a single token cannot work here:
+     dsh-dream-skin published --dsw-alias-bg-overlay as rgba(255,255,255,0.92),
+     and dsh-client-ui-skins makes bg-base, bg-layer-1..3, bg-overlay and
+     bg-module-platform ALL translucent in wallpaper mode, so any one token is
+     one skin away from leaking the conversation behind the dialog. */
+  background: var(--mp-surface-solid, #ffffff);
+  background:
+    linear-gradient(var(--dsw-alias-bg-overlay, transparent), var(--dsw-alias-bg-overlay, transparent)),
+    var(--mp-surface-solid, #ffffff);
   color: var(--dsw-alias-label-primary);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: var(--dsw-radius-panel, 14px);
@@ -296,11 +306,12 @@ window.__ModuleLoader__.load({
 .mp-group + .mp-group { margin-top: 14px; }
 .mp-sectionTitle {
   position: sticky; top: 0; z-index: 1; padding: 8px 4px 4px;
-  /* Sticky, so scrolled rows pass underneath it: it needs the same opaque
-     stack as the card or the rows ghost through the header. */
-  background: var(--dsh-dream-skin-modal-base,
-    var(--dsw-alias-bg-base,
-      var(--dsw-alias-bg-overlay, #fff)));
+  /* Sticky, so scrolled rows pass underneath it: same two-layer fill as the
+     card, or rows ghost through the header. */
+  background: var(--mp-surface-solid, #ffffff);
+  background:
+    linear-gradient(var(--dsw-alias-bg-overlay, transparent), var(--dsw-alias-bg-overlay, transparent)),
+    var(--mp-surface-solid, #ffffff);
   color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 600;
   letter-spacing: 0.04em; text-transform: uppercase;
 }
