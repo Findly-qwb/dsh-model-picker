@@ -364,9 +364,14 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
 /* 4px between adjacent model rows inside one group; the first row of a group
    and the section titles are left untouched. */
 .mp-row + .mp-row { margin-top: 4px; }
-.mp-row:hover, .mp-row[data-active] { background: var(--dsw-alias-interactive-bg-hover); }
+.mp-row:hover { background: var(--dsw-alias-interactive-bg-hover); }
 .mp-row[data-selected] { background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover)); }
 .mp-row[data-selected] .mp-rowName { font-weight: 600; }
+/* The row the detail pane is showing. It must stay marked while the pointer is
+   somewhere else, so it does not borrow the hover fill — it owns a bar on the
+   leading edge, which also survives on top of the "model in use" fill. */
+.mp-row[data-preview] { box-shadow: inset 2px 0 0 var(--dsw-alias-state-business-primary); }
+.mp-row[data-preview]:not([data-selected]) { background: var(--dsw-alias-interactive-bg-hover); }
 .mp-rowMain {
   min-width: 0; flex: 1; display: flex; flex-direction: column;
   justify-content: center; gap: 1px;
@@ -791,9 +796,21 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
      */
     function PickerDialog({ state, select, load, t, labelOf, onClose }) {
       const [query, setQuery] = useState('')
+      // What the right pane shows, held by model key: a model is one model no
+      // matter which section it was reached through, and it has to keep showing
+      // when the row that led to it is collapsed away.
       const [previewKey, setPreviewKey] = useState(null)
+      // Which ROW carries the mark and the keyboard cursor, held by instance: a
+      // model can appear twice (favorite and provider group), so its key is not a
+      // row identity, and expanding a group rebuilds the flat list, so a position
+      // is not one either. It also has to outlive the pointer, or the left pane
+      // loses its mark the moment the mouse crosses into the detail pane.
+      const [cursorInstance, setCursorInstance] = useState(null)
+      // Separate from the cursor because only the keyboard may scroll the list:
+      // a scroll on hover drags the list out from under the pointer, and a scroll
+      // on re-render jumps to the top whenever a group is expanded.
+      const [cursorScroll, setCursorScroll] = useState(null)
       const [effort, setEffort] = useState(undefined)
-      const [activeIndex, setActiveIndex] = useState(0)
       const [meta, setMeta] = useState(null)
       const [favorites, setFavorites] = useState([])
       const [recents, setRecents] = useState([])
@@ -991,12 +1008,40 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
         return map
       }, [flatRows])
 
-      // Preview defaults to the current model, else the first row.
+      // The row that carries the mark and the keyboard cursor. It is normally the
+      // row the pointer or the arrow keys landed on; when that row's group gets
+      // collapsed, the same model is still rendered elsewhere (favorites,
+      // recents) and that copy takes the mark, because the detail pane keeps
+      // showing the model and the list must keep pointing at it.
+      const markedInstance = useMemo(() => {
+        if (cursorInstance !== null && indexOfRow.has(cursorInstance)) return cursorInstance
+        const row = flatRows.find(entry => entry.key === previewKey)
+        return row === undefined ? null : row.instance
+      }, [cursorInstance, flatRows, indexOfRow, previewKey])
+
+      // The cursor's position is derived, never stored: expanding a group rebuilds
+      // the flat list, and a stored index would then point at a different model.
+      // With nothing marked (fresh dialog, or the search hid the marked model) the
+      // arrow keys start from the top of the open list.
+      const activeIndex = useMemo(() => {
+        if (markedInstance === null) return -1
+        const at = indexOfRow.get(markedInstance)
+        return at === undefined ? -1 : at
+      }, [indexOfRow, markedInstance])
+
+      // Preview defaults to the current model, else the first row — and the
+      // cursor is put on that same row, so the list starts with one marked line
+      // instead of looking unselected until the pointer happens to arrive. The
+      // fallback only ever picks a row that is actually rendered: pointing the
+      // detail pane at a model with no visible row is what made the left pane
+      // look like it had lost the selection.
       useEffect(() => {
         if (previewKey !== null && byKey.has(previewKey)) return
         const own = current === null ? undefined : modelKey(current.provider, current.model)
-        const fallback = own !== undefined && byKey.has(own) ? own : flatRows[0]?.key ?? null
-        setPreviewKey(fallback)
+        const ownRow = own === undefined ? undefined : flatRows.find(entry => entry.key === own)
+        const row = ownRow ?? flatRows[0]
+        setPreviewKey(row === undefined ? null : row.key)
+        if (row !== undefined) setCursorInstance(row.instance)
       }, [byKey, current, flatRows, previewKey])
 
       const preview = useMemo(() => (previewKey === null ? null : rowOf(previewKey)), [previewKey, rowOf])
@@ -1014,19 +1059,27 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
         setEffort(preview.model.reasoning?.defaultEffort)
       }, [current, preview])
 
-      // Keep the highlighted row inside the list viewport. The ref is looked up by
-      // the row actually at `activeIndex`, so hovering a favorite scrolls to that
-      // favorite row rather than to its copy inside the provider group.
+      // Keep the keyboard cursor inside the list viewport. Keyed on the cursor
+      // and driven only by keyboard movement: scrolling whenever `flatRows` was
+      // rebuilt is what yanked the list back to the top (onto favorites/recents)
+      // every time a provider group was expanded, and scrolling on hover makes
+      // the list creep out from under the pointer.
       useEffect(() => {
-        const instance = flatRows[activeIndex]?.instance
-        if (instance === undefined) return
-        rowRefs.current.get(instance)?.scrollIntoView?.({ block: 'nearest' })
-      }, [activeIndex, flatRows])
+        if (cursorScroll === null) return
+        rowRefs.current.get(cursorScroll)?.scrollIntoView?.({ block: 'nearest' })
+      }, [cursorScroll])
 
       const onQueryChange = value => {
         setQuery(value)
-        setActiveIndex(0)
+        setCursorInstance(null)
       }
+
+      // Hovering and clicking select what the detail pane shows and move the
+      // cursor there, so the next arrow key continues from the pointer.
+      const pointAt = useCallback(row => {
+        setPreviewKey(row.key)
+        setCursorInstance(row.instance)
+      }, [])
 
       const toggleFavorite = useCallback(key => {
         const on = favorites.includes(key)
@@ -1089,13 +1142,17 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
           if (flatRows.length === 0) return
           event.preventDefault()
           const delta = event.key === 'ArrowDown' ? 1 : -1
-          const next = (activeIndex + delta + flatRows.length) % flatRows.length
-          setActiveIndex(next)
+          // No cursor yet (nothing hovered, or its group was just collapsed):
+          // Down starts at the first row, Up at the last one.
+          const base = activeIndex >= 0 ? activeIndex : (delta === 1 ? -1 : 0)
+          const next = (base + delta + flatRows.length) % flatRows.length
+          setCursorInstance(flatRows[next].instance)
+          setCursorScroll(flatRows[next].instance)
           setPreviewKey(flatRows[next].key)
           return
         }
         if (event.key === 'Enter') {
-          const row = flatRows[activeIndex]
+          const row = activeIndex >= 0 ? flatRows[activeIndex] : undefined
           if (row === undefined) return
           event.preventDefault()
           apply(row, effort)
@@ -1352,8 +1409,12 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
                     'data-kind': 'error',
                   }, failure.message)),
                   open && section.rows.map(row => {
-                    const index = indexOfRow.get(row.instance) ?? -1
                     const selected = current !== null && current.provider === row.provider && current.model === row.model.id
+                    // The row the detail pane is showing. Marked by instance, not
+                    // by model key, because a favorited model is rendered twice;
+                    // and it must survive the pointer leaving the list, or the
+                    // left pane looks unselected the moment you read the detail.
+                    const previewed = row.instance === markedInstance
                     const isFavorite = favorites.includes(row.key)
                     return h('div', {
                       key: row.instance,
@@ -1366,15 +1427,9 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
                       tabIndex: -1,
                       'aria-selected': selected,
                       'data-selected': selected ? '' : undefined,
-                      'data-active': index === activeIndex ? '' : undefined,
-                      onMouseEnter: () => {
-                        setPreviewKey(row.key)
-                        setActiveIndex(index)
-                      },
-                      onClick: () => {
-                        setPreviewKey(row.key)
-                        if (index >= 0) setActiveIndex(index)
-                      },
+                      'data-preview': previewed ? '' : undefined,
+                      onMouseEnter: () => pointAt(row),
+                      onClick: () => pointAt(row),
                       onDoubleClick: () => apply(row, effortFor(row)),
                     },
                       h('span', { className: 'mp-rowMain' },
