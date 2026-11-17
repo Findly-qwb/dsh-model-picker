@@ -223,6 +223,8 @@ window.__ModuleLoader__.load({
 .mp-trigger:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
 .mp-trigger:focus-visible { box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); }
 .mp-trigger:disabled { color: var(--dsw-alias-label-dimmed); cursor: default; }
+.mp-triggerProvider { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1000; color: var(--dsw-alias-label-tertiary); display: var(--dsh-composer-model-text-display, block); }
+.mp-triggerSeparator { flex: none; color: var(--dsw-alias-label-caption); display: var(--dsh-composer-model-text-display, block); }
 .mp-triggerLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: var(--dsh-composer-model-text-display, block); }
 .mp-triggerEffort { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1000; color: var(--dsw-alias-label-caption); display: var(--dsh-composer-model-text-display, block); }
 .mp-triggerIcon { flex: none; display: var(--dsh-composer-model-icon-display, none); }
@@ -748,9 +750,10 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
           return model.name
         }
       }
+      const providerLabel = currentGroup === undefined ? undefined : groupName(currentGroup, t)
       const label = currentModel === undefined || currentGroup === undefined
         ? (state.status === 'loading' ? t('trigger.loading') : t('trigger.select'))
-        : labelOf({ id: currentGroup.id, name: groupName(currentGroup, t) }, currentModel, 'trigger', true)
+        : labelOf({ id: currentGroup.id, name: providerLabel }, currentModel, 'trigger', true)
 
       return h('div', { className: 'mp-root' },
         h('button', {
@@ -773,6 +776,8 @@ body[data-ds-dark-theme] .mp-sectionTitle { --mp-surface-solid: #17191e; }
           },
         },
           h(IconData, { className: 'mp-triggerIcon' }),
+          providerLabel !== undefined && h('span', { className: 'mp-triggerProvider' }, providerLabel),
+          providerLabel !== undefined && h('span', { className: 'mp-triggerSeparator', 'aria-hidden': true }, '/'),
           h('span', { className: 'mp-triggerLabel' }, label),
           effortName !== undefined && h('span', { className: 'mp-triggerEffort' }, effortName),
           h(IconChevron, { className: 'mp-triggerChevron' }),
